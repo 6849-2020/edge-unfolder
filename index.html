@@ -121,6 +121,7 @@
         .onChange( function(value) {
           polyhedron = POLYHEDRA[this.property];
           displayPolyhedron();
+          categoryFolders[polyhedron.category[0]].close();
         });
     }
 

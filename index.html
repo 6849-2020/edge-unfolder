@@ -39,7 +39,10 @@
       dlAnchorElem.setAttribute("href",     dataStr     );
       dlAnchorElem.setAttribute("download", "edge-unfolder.fold");
       dlAnchorElem.click();
-    }
+    },
+    simulate: function() {
+      simulate(polyhedron, edges);
+    },
   };
 
 
@@ -122,6 +125,7 @@
     }
 
     gui.add(parameters, 'exportToFold').name("EXPORT TO FOLD");
+    gui.add(parameters, 'simulate').name("Origami Simulator");
 
     document.addEventListener( 'click', onClick, false );
     window.addEventListener( 'resize', onWindowResize, false );

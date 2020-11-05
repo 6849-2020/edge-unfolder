@@ -107,3 +107,30 @@ function exportToFold(polyhedron, edges) {
 
   return fold;
 }
+
+var simulator, ready, onReady;
+function simulate(polyhedron, edges) {
+  var fold = exportToFold(polyhedron, edges);
+  if(simulator && !simulator.closed) {
+    simulator.focus();
+  } else {
+    ready = false;
+    simulator = window.open('https://origamisimulator.org/?model=', 'simulator');
+  }
+  onReady = function() {
+    simulator.postMessage({op: 'importFold', fold: fold}, '*');
+  }
+  checkReady();
+}
+function checkReady() {
+  if(ready && onReady) {
+    onReady();
+    onReady = null;
+  }
+}
+window.addEventListener('message', function(e) {
+  if(e.data && e.data.from === 'OrigamiSimulator' && e.data.status === 'ready') {
+    ready = true;
+    checkReady();
+  }
+});

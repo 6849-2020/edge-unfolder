@@ -12,7 +12,7 @@
   <body>
 
     <div id="info" style="font-size: 24px;">
-      EDGE UNFOLDER<br/><span id="polyhedron_name"></span>
+      EDGE UNFOLDER<br/><span id="polyhedron_name" style="font-size:20px; color: #ff0;"></span>
     </div>
     <a id="downloadAnchorElem" style="display:none"></a>
 
@@ -124,7 +124,7 @@
         });
     }
 
-    gui.add(parameters, 'exportToFold').name("EXPORT TO FOLD");
+    gui.add(parameters, 'exportToFold').name("Export to FOLD");
     gui.add(parameters, 'simulate').name("Origami Simulator");
 
     document.addEventListener( 'click', onClick, false );

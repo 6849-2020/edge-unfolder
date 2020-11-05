@@ -6,11 +6,13 @@
   <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
   <link rel="stylesheet" href="css/main.css">
   <script src="js/polyhedra.js"></script>
+  <script src="js/disjoint-set.js"></script>
+  <script src="js/export.js"></script>
   </head>
   <body>
 
     <div id="info" style="font-size: 24px;">
-      EDGE UNFOLDER
+      EDGE UNFOLDER<br/><span id="polyhedron_name"></span>
     </div>
     <a id="downloadAnchorElem" style="display:none"></a>
 
@@ -25,9 +27,18 @@
 
   var group, camera, scene, renderer, raycaster;
 
+  var polyhedron;
+  var edges = {};
+
   var parameters = {
     exportToFold: function() {
-      exportToFold();
+      let fold = exportToFold(polyhedron, edges);
+      //https://stackoverflow.com/questions/19721439/download-json-object-as-a-file-from-browser
+      var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fold));
+      var dlAnchorElem = document.getElementById('downloadAnchorElem');
+      dlAnchorElem.setAttribute("href",     dataStr     );
+      dlAnchorElem.setAttribute("download", "edge-unfolder.fold");
+      dlAnchorElem.click();
     }
   };
 
@@ -40,8 +51,7 @@
     color: 0x00ff00
   } );
 
-  var polyhedron;
-  var edges = {};
+
 
   init();
   animate();
@@ -58,7 +68,7 @@
     // camera
 
     camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 1000 );
-    camera.position.set( 1, 2, 3 );
+    camera.position.set( -1, -2, 3 );
     scene.add( camera );
 
     // controls
@@ -87,7 +97,7 @@
 
     // dat.GUI
 
-    var gui = new GUI( { width: 300 } );
+    var gui = new GUI( { width: 250 } );
 
     // this code excerpt is taken from Lee Stemkoski
     // https://github.com/stemkoski/stemkoski.github.com/blob/master/Three.js/Polyhedra.html
@@ -118,6 +128,8 @@
   }
 
   function displayPolyhedron() {
+    document.getElementById("polyhedron_name").innerHTML = polyhedron.name;
+
     while (group.children.length > 0) {
       group.remove(group.children[0]);
     }
@@ -128,10 +140,12 @@
       geometry.vertices.push(new THREE.Vector3(polyhedron.vertex[i][0], polyhedron.vertex[i][1], polyhedron.vertex[i][2]));
     }
 
+    var new_f_to_old_f = [];
     for (var i = 0; i < polyhedron.face.length; i++) {
       var f = polyhedron.face[i];
       if (f.length == 3) {
         geometry.faces.push(new THREE.Face3(f[0], f[1], f[2]));
+        new_f_to_old_f.push(i);
       } else {
         // do a simple triangulation
         // add a new vertex at the center
@@ -145,6 +159,7 @@
 
         for (var j = 0; j < f.length; j++) {
           geometry.faces.push(new THREE.Face3(f[j], f[(j + 1) % f.length], v_idx));
+          new_f_to_old_f.push(i);
         }
       }
     }
@@ -169,22 +184,24 @@
 
       group.add(edge);
 
+      var edge_faces = [];
       var normals = [];
       for (var j = 0; j < geometry.faces.length; j++) {
         let f = geometry.faces[j];
 
         // check if this face has this edge
         if ((f.a == e[0]) + (f.a == e[1]) + (f.b == e[0]) + (f.b == e[1]) + (f.c == e[0]) + (f.c == e[1]) == 2) {
+          edge_faces.push(new_f_to_old_f[j]);
           normals.push(f.normal);
         }
       }
       var angle = Math.acos(normals[0].dot(normals[1])) * 180 / Math.PI;
-      console.log(angle);
 
       edges[edge.uuid] = {
         selected: false,
         index: i,
-        angle: angle
+        angle: angle,
+        edge_faces: edge_faces
       }
     }
 
@@ -248,43 +265,6 @@
 
   function render() {
     renderer.render( scene, camera );
-  }
-
-  function exportToFold() {
-    var edges_vertices = [];
-    var edges_assignment = [];
-    var edges_foldAngle = [];
-    for (var uuid in edges) {
-      var eIdx = edges[uuid].index;
-
-      // TODO: if edge is selected - split it to two Boundary edges, and split the vertices, and change the faces...
-      // if (edges[uuid].selected) {
-      //
-      // } else {
-      //
-      // }
-      edges_vertices.push(polyhedron.edge[eIdx]);
-      edges_assignment.push("M");
-      edges_foldAngle.push(-edges[uuid].angle);
-    }
-    var fold = {
-      file_spec : 1.1,
-      file_creator : "EDGE UNFOLDER v0.1",
-      file_classes : ["singleModel"],
-      frame_classes: ["foldedForm"],
-      frame_attributes: ["3D"],
-      vertices_coords : polyhedron.vertex,
-      faces_vertices : polyhedron.face,
-      edges_vertices : edges_vertices,
-      edges_assignment : edges_assignment,
-      edges_foldAngle : edges_foldAngle
-    }
-    //https://stackoverflow.com/questions/19721439/download-json-object-as-a-file-from-browser
-    var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fold));
-    var dlAnchorElem = document.getElementById('downloadAnchorElem');
-    dlAnchorElem.setAttribute("href",     dataStr     );
-    dlAnchorElem.setAttribute("download", "edge-unfolder.fold");
-    dlAnchorElem.click();
   }
 
   </script>

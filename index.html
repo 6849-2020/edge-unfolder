@@ -87,7 +87,7 @@
 
     // dat.GUI
 
-    var gui = new GUI( { width: 500 } );
+    var gui = new GUI( { width: 300 } );
 
     // this code excerpt is taken from Lee Stemkoski
     // https://github.com/stemkoski/stemkoski.github.com/blob/master/Three.js/Polyhedra.html
@@ -104,7 +104,7 @@
       parameters[arg] = function() {};
 
       guiSection.add( parameters, arg )
-        .name( POLYHEDRA[arg].name )
+        .name( arg )
         .onChange( function(value) {
           polyhedron = POLYHEDRA[this.property];
           displayPolyhedron();

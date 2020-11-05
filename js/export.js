@@ -1,7 +1,11 @@
 // given a polyhedron and selected edges, returns a FOLD json that corresponds
-// to the same polyhedron with these edges cut
-// (re-assigns new vertices)
+// to the same polyhedron with these edges cut.
+// this requires to re-assign vertices - as cut edges might or might not lead to new vertices
+// in the unfolded state
+// to do so, we start by multiplting all vertices by all their faces, and then
+// joining vertices that still share an UNCUT edge 
 function exportToFold(polyhedron, edges) {
+  // first, we create a new vector where every vertex is multplied by the number of faces its in
   var new_v = [];
   var old_v_to_new_v = {}; // key is [vertex_id, face_id]
   for (var i = 0; i < polyhedron.face.length; i++) {
@@ -12,6 +16,9 @@ function exportToFold(polyhedron, edges) {
     }
   }
 
+  // now we unify every pair of [vertex, face1] [vertex, face2] if those two faces
+  // share an UNCUT edge
+  // to do so, we use disjoint set data structure
   var disjointSet = new DisjointSet(new_v.length);
   for (var uuid in edges) {
     if (!edges[uuid].selected) {
@@ -49,7 +56,7 @@ function exportToFold(polyhedron, edges) {
     let f1 = edges[uuid].edge_faces[0];
     let f2 = edges[uuid].edge_faces[1];
 
-    // if edge is selected - split it to two Boundary edges, and split the vertices, and change the faces...
+    // if edge is cut - split it into two boundary edges, with the correct vertex assignment
     if (edges[uuid].selected) {
       let new_v1_f1 = parent_to_coord[disjointSet.find(old_v_to_new_v[[v1, f1]])];
       let new_v2_f1 = parent_to_coord[disjointSet.find(old_v_to_new_v[[v2, f1]])];
@@ -64,6 +71,7 @@ function exportToFold(polyhedron, edges) {
       edges_assignment.push("B");
       edges_foldAngle.push(0);
     } else {
+      // otherwise, keep it as one edge with the correct folding angle
       let new_v1 = parent_to_coord[disjointSet.find(old_v_to_new_v[[v1, f1]])];
       let new_v2 = parent_to_coord[disjointSet.find(old_v_to_new_v[[v2, f1]])];
 

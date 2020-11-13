@@ -3,7 +3,7 @@
 // this requires to re-assign vertices - as cut edges might or might not lead to new vertices
 // in the unfolded state
 // to do so, we start by multiplting all vertices by all their faces, and then
-// joining vertices that still share an UNCUT edge 
+// joining vertices that still share an UNCUT edge
 function exportToFold(polyhedron, edges) {
   // first, we create a new vector where every vertex is multplied by the number of faces its in
   var new_v = [];
@@ -77,19 +77,55 @@ function exportToFold(polyhedron, edges) {
 
       edges_vertices.push([new_v1, new_v2]);
       edges_assignment.push("M");
-      edges_foldAngle.push(-edges[uuid].angle);
+      edges_foldAngle.push(180-70.53);
     }
   }
 
-  // last, create a new face vector, just with the updated vertex indices
+  // last, create the face vector
+  // if the face is a triangle, just update the vertices indices of the original polyhedron and push it
+  // else, do a simple centroid triangulation and add new flat edges
   var faces_vertices = [];
   for (var i = 0; i < polyhedron.face.length; i++) {
-    var f = [];
-    for (var j = 0; j < polyhedron.face[i].length; j++) {
-      let new_v = parent_to_coord[disjointSet.find(old_v_to_new_v[[polyhedron.face[i][j], i]])];
-      f.push(new_v);
+    if (polyhedron.face[i].length == 3) {
+      var f = [];
+      for (var j = 0; j < polyhedron.face[i].length; j++) {
+        let new_v = parent_to_coord[disjointSet.find(old_v_to_new_v[[polyhedron.face[i][j], i]])];
+        f.push(new_v);
+      }
+      faces_vertices.push(f);
+    } else {
+      // calculate the center of the face
+      let f = polyhedron.face[i];
+      var center_v = [0, 0, 0];
+      for (var j = 0; j < f.length; j++) {
+        let v = vertices_coords[parent_to_coord[disjointSet.find(old_v_to_new_v[[f[j], i]])]];
+        center_v[0] += v[0];
+        center_v[1] += v[1];
+        center_v[2] += v[2];
+      }
+      center_v[0] /= f.length;
+      center_v[1] /= f.length;
+      center_v[2] /= f.length;
+
+      let center_v_idx = vertices_coords.length;
+      // add the center vertex
+      vertices_coords.push(center_v);
+
+      for (var j = 0; j < f.length; j++) {
+        let v1 = parent_to_coord[disjointSet.find(old_v_to_new_v[[f[j], i]])];
+        let v2 = parent_to_coord[disjointSet.find(old_v_to_new_v[[f[(j + 1) % f.length], i]])];
+
+        // add a new edge
+        edges_vertices.push([v1, center_v_idx]);
+        edges_assignment.push("M");
+        edges_foldAngle.push(0);
+
+        // add the triangular face
+        let new_face = [v1, v2, center_v_idx];
+        faces_vertices.push(new_face);
+      }
     }
-    faces_vertices.push(f);
+
   }
 
   var fold = {

@@ -171,6 +171,25 @@
 
     geometry.computeFaceNormals();
 
+    for (var i = 0; i < geometry.faces.length; i++) {
+      let f = geometry.faces[i];
+      let normal = f.normal;
+      var v = new THREE.Vector3(0, 0, 0);
+      v.add(geometry.vertices[f.a]);
+      v.add(geometry.vertices[f.b]);
+      v.add(geometry.vertices[f.c]);
+      v.divideScalar(3);
+
+      var v2 = v.clone();
+      v2.add(normal.divideScalar(2));
+
+      var normalMaterial = new THREE.MeshLambertMaterial( {
+        color: 0xFFC0CB
+      } );
+      var normalArrow = cylinderMesh(v, v2, normalMaterial);
+      group.add( normalArrow );
+    }
+
     var meshMaterial = new THREE.MeshLambertMaterial( {
       color: 0x0000ff,
       opacity: 1,
@@ -200,7 +219,10 @@
           normals.push(f.normal);
         }
       }
-      var angle = Math.acos(normals[0].dot(normals[1])) * 180 / Math.PI;
+      console.log(normals.length);
+      var angle = 180 - (Math.acos(normals[0].dot(normals[1])) * 180 / Math.PI);
+      console.log(edge_faces);
+      console.log(angle);
 
       edges[edge.uuid] = {
         selected: false,

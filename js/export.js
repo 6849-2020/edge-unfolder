@@ -82,8 +82,10 @@ function exportToFold(polyhedron, edges) {
   }
 
   // last, create the face vector
-  // if the face is a triangle, just update the vertices indices of the original polyhedron and push it
-  // else, do a simple centroid triangulation and add new flat edges
+  // usually, we would just transform the vertices
+  // however, origami simulator seems to have a hard time with non triangular faces
+  // so... we triangulate the mesh, adding flat edges (0 degrees) for every face that has more than three faces
+  // this requires new vertices and new edges (for every face that has more than 3 vertices)
   var faces_vertices = [];
   for (var i = 0; i < polyhedron.face.length; i++) {
     if (polyhedron.face[i].length == 3) {

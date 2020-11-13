@@ -77,7 +77,7 @@ function exportToFold(polyhedron, edges) {
 
       edges_vertices.push([new_v1, new_v2]);
       edges_assignment.push("M");
-      edges_foldAngle.push(180-70.53);
+      edges_foldAngle.push(-180+edges[uuid].angle);
     }
   }
 

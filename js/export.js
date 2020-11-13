@@ -3,7 +3,7 @@
 // this requires to re-assign vertices - as cut edges might or might not lead to new vertices
 // in the unfolded state
 // to do so, we start by multiplting all vertices by all their faces, and then
-// joining vertices that still share an UNCUT edge 
+// joining vertices that still share an UNCUT edge
 function exportToFold(polyhedron, edges) {
   // first, we create a new vector where every vertex is multplied by the number of faces its in
   var new_v = [];
@@ -77,7 +77,7 @@ function exportToFold(polyhedron, edges) {
 
       edges_vertices.push([new_v1, new_v2]);
       edges_assignment.push("M");
-      edges_foldAngle.push(-edges[uuid].angle);
+      edges_foldAngle.push(-180+edges[uuid].angle);
     }
   }
 

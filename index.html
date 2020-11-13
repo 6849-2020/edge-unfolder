@@ -200,7 +200,14 @@
           normals.push(f.normal);
         }
       }
-      var angle = Math.acos(normals[0].dot(normals[1])) * 180 / Math.PI;
+      let dp = normals[0].dot(normals[1]);
+      var angle = 0;
+      if (dp > 0) {
+        angle = 180 - (Math.acos(-dp) * 180 / Math.PI);
+      } else {
+        angle = 180 - (Math.acos(dp) * 180 / Math.PI);
+      }
+      console.log(angle);
 
       edges[edge.uuid] = {
         selected: false,

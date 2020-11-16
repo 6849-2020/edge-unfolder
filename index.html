@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="css/main.css">
   <script src="js/polyhedra.js"></script>
   <script src="js/disjoint-set.js"></script>
+  <script src="js/loadOBJ.js"></script>
   <script src="js/export.js"></script>
   </head>
   <body>
@@ -30,7 +31,20 @@
   var polyhedron;
   var edges = {};
 
+  let fileUpload = document.getElementById("myInput")
   var parameters = {
+    importOBJ: function(){
+      document.getElementById('myInput').click();
+      fileUpload.onchange = function(){
+        async function asyncCall() {
+          await loadOBJ();
+          await computeOBJ()
+          polyhedron = userOBJ;
+          displayPolyhedron();
+        }
+        asyncCall();
+      }
+    },
     exportToFold: function() {
       let fold = exportToFold(polyhedron, edges);
       //https://stackoverflow.com/questions/19721439/download-json-object-as-a-file-from-browser
@@ -125,6 +139,7 @@
         });
     }
 
+    gui.add(parameters, 'importOBJ').name("Import OBJ file");
     gui.add(parameters, 'exportToFold').name("Export to FOLD");
     gui.add(parameters, 'simulate').name("Origami Simulator");
 
@@ -275,6 +290,8 @@
   }
 
   </script>
+    <!-- get user input OBJ file -->
+    <input id="myInput" type="file" style="visibility:hidden" />
 
 
   </body>

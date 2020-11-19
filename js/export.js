@@ -119,7 +119,7 @@ function exportToFold(polyhedron, edges) {
 
         // add a new edge
         edges_vertices.push([v1, center_v_idx]);
-        edges_assignment.push("M");
+        edges_assignment.push("F");
         edges_foldAngle.push(0);
 
         // add the triangular face

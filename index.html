@@ -4,37 +4,187 @@
   <title>6.849 - EDGE UNFOLDER</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+  <link href="dependencies/bootstrap.min.css" rel="stylesheet" type="text/css"/>
+  <link rel="stylesheet" type="text/css" href="dependencies/flat-ui.min.css"/>
+  <link rel="stylesheet" type="text/css" href="dependencies/jquery-ui.min.css"/>
+  <link rel="stylesheet" type="text/css" href="css/nav.css"/>
+  <link rel="stylesheet" type="text/css" href="css/main.css"/>
+
   <link rel="stylesheet" href="css/main.css">
+  <script type="text/javascript" src="dependencies/jquery-3.2.1.min.js"></script>
+  <script type="text/javascript" src="dependencies/jquery-ui.min.js"></script>
+  <script type="text/javascript" src="dependencies/flat-ui.min.js"></script>
+
   <script src="js/polyhedra.js"></script>
   <script src="js/disjoint-set.js"></script>
   <script src="js/loadOBJ.js"></script>
   <script src="js/export.js"></script>
+  <script src="js/controls.js"></script>
   </head>
   <body>
 
-    <div id="info" style="font-size: 24px;">
-      EDGE UNFOLDER<br/><span id="polyhedron_name" style="font-size:20px; color: #ff0;"></span>
-    </div>
-    <a id="downloadAnchorElem" style="display:none"></a>
+    <div class="modal fade" id="aboutModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                    <p>
+                    <b>EDGE UNFOLDER</b><br/>
+                        This app allows you to play around with edge cutting and unfolding of polyhedra and other 3D objects.
+                    </p>
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
 
+    <nav id="globalNav" class="navbar navbar-inverse navbar-embossed" role="navigation">
+        <div class="collapse navbar-collapse" id="navbar-collapse-01">
+            <ul class="nav navbar-nav navbar-left">
+                <li class="dropdown navDropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Import <b class="caret"></b></a>
+                    <span class="dropdown-arrow"></span>
+                    <ul class="dropdown-menu" id="import_menu"  style="min-width: 200px;">
+                      <li><a id="loadOBJ" href="#">Import OBJ</a></li>
+                      <li class="divider"></li>
+                    </ul>
+                </li>
+                <li class="dropdown navDropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Export <b class="caret"></b></a>
+                    <span class="dropdown-arrow"></span>
+                    <ul class="dropdown-menu" style="min-width: 200px;">
+                      <li><a id="exportOrigamiSimulator" href="#">Export to Origami Simulator</a></li>
+                      <li><a id="exportFold" href="#">Export to FOLD</a></li>
+                    </ul>
+                </li>
+                <li><a id="about" class="menuHoverControls" target="_blank" href="#">About</a></li>
+            </ul>
+        </div><!-- /.navbar-collapse -->
+
+    </nav>
+
+    <div  id="threeContainer"></div>
+
+    <div id="topright">
+        <div id="polyhedronName"></div>
+    </div>
+
+    <div id="controlsBottom">
+        <a href="#" id="resetBottom" class="btn btn-lg btn-default">Reset</a>
+    </div>
+
+    <a id="downloadAnchorElem" style="display:none"></a>
 
   <script type="module">
 
   import * as THREE from 'https://unpkg.com/three@0.121.1/build/three.module.js';
 
-  import { GUI } from 'https://unpkg.com/three@0.121.1/examples/jsm/libs/dat.gui.module.js';
-
   import { OrbitControls } from 'https://unpkg.com/three@0.121.1/examples/jsm/controls/OrbitControls.js';
+  import { TrackballControls } from 'https://unpkg.com/three@0.121.1/examples/jsm/controls/TrackballControls.js';
 
-  var group, camera, scene, renderer, raycaster;
+  var group, camera, scene, renderer, raycaster, controls;
 
   var polyhedron;
   var edges = {};
 
   let fileUpload = document.getElementById("myInput")
-  var parameters = {
-    importOBJ: function(){
-      document.getElementById('myInput').click();
+
+  const mouse = new THREE.Vector2();
+  var edgeMaterial = new THREE.MeshLambertMaterial( {
+    color: 0x000000
+  } );
+  var edgeMaterialSelected = new THREE.MeshLambertMaterial( {
+    color: 0x40E0D0
+  } );
+
+  init();
+  initControls();
+  animate();
+
+  function init() {
+
+    var container = document.getElementById("threeContainer");
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xffffff);
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    container.append( renderer.domElement );
+
+    // camera
+    camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 500 );
+    camera.position.set( -1, -2, 2 );
+    scene.add( camera );
+
+    // controls
+
+    controls = new TrackballControls(camera, renderer.domElement);
+    controls.rotateSpeed = 7.0;
+    controls.zoomSpeed = 7;
+    controls.noPan = true;
+    controls.staticMoving = true;
+    controls.dynamicDampingFactor = 0.3;
+    controls.minDistance = 1;
+    controls.maxDistance = 30;
+
+    // light
+    var directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight1.position.set(0, 40, 0);
+    scene.add(directionalLight1);
+    var directionalLight4 = new THREE.DirectionalLight(0xffffff, 0.3);
+    directionalLight4.position.set(0, -40, 0);
+    scene.add(directionalLight4);
+    var directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight2.position.set(40, -12, 0);
+    scene.add(directionalLight2);
+    var directionalLight3 = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight3.position.set(-40, -12, 0);
+    scene.add(directionalLight3);
+    var directionalLight4 = new THREE.DirectionalLight(0xffffff, 0.3);
+    directionalLight4.position.set(0, 12, 40);
+    scene.add(directionalLight4);
+    var directionalLight5 = new THREE.DirectionalLight(0xffffff, 0.3);
+    directionalLight5.position.set(0, 12 , -40);
+    scene.add(directionalLight5);
+
+    // Raycaster
+    raycaster = new THREE.Raycaster();
+		raycaster.params.Line.threshold = 0.1;
+
+    group = new THREE.Group();
+    scene.add( group );
+
+    polyhedron = POLYHEDRA.J19;
+    displayPolyhedron();
+
+    document.addEventListener( 'click', onClick, false );
+    document.addEventListener( 'mousemove', onMouseMove, false );
+    window.addEventListener( 'resize', onWindowResize, false );
+  }
+
+  function initControls() {
+    setLink("#about", function(){
+        $('#aboutModal').modal('show');
+    });
+
+    setLink("#exportOrigamiSimulator", function(){
+        simulate(polyhedron, edges);
+    });
+
+    setLink("#exportFold", function() {
+      let fold = exportToFold(polyhedron, edges);
+      //https://stackoverflow.com/questions/19721439/download-json-object-as-a-file-from-browser
+      var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fold));
+      var dlAnchorElem = document.getElementById('downloadAnchorElem');
+      dlAnchorElem.setAttribute("href",     dataStr     );
+      dlAnchorElem.setAttribute("download", "edge-unfolder.fold");
+      dlAnchorElem.click();
+    });
+
+    setLink("#loadOBJ", function() {
+      fileUpload.click();
       fileUpload.onchange = function(){
         async function asyncCall() {
           await loadOBJ();
@@ -44,111 +194,45 @@
         }
         asyncCall();
       }
-    },
-    exportToFold: function() {
-      let fold = exportToFold(polyhedron, edges);
-      //https://stackoverflow.com/questions/19721439/download-json-object-as-a-file-from-browser
-      var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fold));
-      var dlAnchorElem = document.getElementById('downloadAnchorElem');
-      dlAnchorElem.setAttribute("href",     dataStr     );
-      dlAnchorElem.setAttribute("download", "edge-unfolder.fold");
-      dlAnchorElem.click();
-    },
-    simulate: function() {
-      simulate(polyhedron, edges);
-    },
-  };
+    });
 
+    setLink("#resetBottom", function() {
+      displayPolyhedron();
+    });
 
-  const mouse = new THREE.Vector2();
-  var edgeMaterial = new THREE.MeshLambertMaterial( {
-    color: 0xff0000
-  } );
-  var edgeMaterialSelected = new THREE.MeshLambertMaterial( {
-    color: 0x00ff00
-  } );
-
-
-
-  init();
-  animate();
-
-  function init() {
-
-    scene = new THREE.Scene();
-
-    renderer = new THREE.WebGLRenderer( { antialias: true } );
-    //renderer.setPixelRatio( window.devicePixelRatio );
-    renderer.setSize( window.innerWidth, window.innerHeight );
-    document.body.appendChild( renderer.domElement );
-
-    // camera
-
-    camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 1000 );
-    camera.position.set( -1, -2, 3 );
-    scene.add( camera );
-
-    // controls
-
-    var controls = new OrbitControls( camera, renderer.domElement );
-    controls.maxDistance = 500;
-    //controls.maxPolarAngle = Math.PI / 2;
-
-    scene.add( new THREE.AmbientLight( 0x222222 ) );
-
-    // light
-
-    var light = new THREE.PointLight( 0xffb7b7, 1 );
-    light.position.set( 5, 5, 5 );
-    camera.add( light );
-
-    // Raycaster
-    raycaster = new THREE.Raycaster();
-		raycaster.params.Line.threshold = 0.1;
-
-    group = new THREE.Group();
-    scene.add( group );
-
-    polyhedron = POLYHEDRA.J1;
-    displayPolyhedron();
-
-    // dat.GUI
-
-    var gui = new GUI( { width: 250 } );
-
-    // this code excerpt is taken from Lee Stemkoski
-    // https://github.com/stemkoski/stemkoski.github.com/blob/master/Three.js/Polyhedra.html
     var categoryFolders = {};
+    var categoryKey = 0;
     for (var arg in POLYHEDRA) {
-      var guiSection = gui;
       if ( POLYHEDRA[arg].hasOwnProperty("category") ) {
         var category = POLYHEDRA[arg].category[0];
-        if ( !categoryFolders.hasOwnProperty(category) )
-          categoryFolders[category] = gui.addFolder(category);
-        guiSection = categoryFolders[category];
+        if ( !categoryFolders.hasOwnProperty(category) ) {
+            $("#import_menu").append(`<li class="dropdown-submenu">
+              <a tabindex="-1">` + category + `<span class="pull-right fui-arrow-right"></span></a>
+              <ul class="dropdown-menu" id="category_` + categoryKey + `"></ul>
+              </li>`);
+            categoryFolders[category] = categoryKey;
+            categoryKey++;
+        }
+
+        var currentCategory = categoryFolders[category];
+
+        $("#category_" + currentCategory).append(`<li><a href="#" class="polyhedra">` + arg + `</a></li>`)
       }
-
-      parameters[arg] = function() {};
-
-      guiSection.add( parameters, arg )
-        .name( arg )
-        .onChange( function(value) {
-          polyhedron = POLYHEDRA[this.property];
-          displayPolyhedron();
-          categoryFolders[polyhedron.category[0]].close();
-        });
     }
 
-    gui.add(parameters, 'importOBJ').name("Import OBJ file");
-    gui.add(parameters, 'exportToFold').name("Export to FOLD");
-    gui.add(parameters, 'simulate').name("Origami Simulator");
+    setLink(".polyhedra", function(e){
+        var arg = $(e.target).html();
+        if (arg) {
+          polyhedron = POLYHEDRA[arg];
+          displayPolyhedron();
+        }
+    });
 
-    document.addEventListener( 'click', onClick, false );
-    window.addEventListener( 'resize', onWindowResize, false );
+
   }
 
   function displayPolyhedron() {
-    document.getElementById("polyhedron_name").innerHTML = polyhedron.name;
+    document.getElementById("polyhedronName").innerHTML = polyhedron.name;
 
     while (group.children.length > 0) {
       group.remove(group.children[0]);
@@ -186,11 +270,14 @@
 
     geometry.computeFaceNormals();
 
-    var meshMaterial = new THREE.MeshLambertMaterial( {
-      color: 0x0000ff,
-      opacity: 1,
-      transparent: true,
-    } );
+    var meshMaterial = new THREE.MeshPhongMaterial({
+        flatShading:true,
+        side:THREE.FrontSide,
+        polygonOffset: true,
+        polygonOffsetFactor: 0.5, // positive value pushes polygon further away
+        polygonOffsetUnits: 1
+    });
+    meshMaterial.color.setStyle( "#ec008b");
 
     var mesh = new THREE.Mesh( geometry, meshMaterial );
     mesh.material.side = THREE.FrontSide; // front faces
@@ -221,6 +308,7 @@
 
       edges[edge.uuid] = {
         selected: false,
+        hover: false,
         index: i,
         angle: angle,
         edge_faces: edge_faces
@@ -235,7 +323,7 @@
       var direction = new THREE.Vector3().subVectors(point2, point1);
       var arrow = new THREE.ArrowHelper(direction.clone().normalize(), point1);
       var rotation = new THREE.Euler().setFromQuaternion(arrow.quaternion);
-      var edgeGeometry = new THREE.CylinderGeometry( 0.02, 0.02, direction.length(), 8, 4 );
+      var edgeGeometry = new THREE.CylinderGeometry( 0.01, 0.01, direction.length(), 8, 4 );
       var edge = new THREE.Mesh(edgeGeometry, material);
       var position = new THREE.Vector3().addVectors(point1, direction.multiplyScalar(0.5));
       edge.position.set(position.x, position.y, position.z);
@@ -249,6 +337,8 @@
     camera.updateProjectionMatrix();
 
     renderer.setSize( window.innerWidth, window.innerHeight );
+
+    controls.handleResize();
 
   }
 
@@ -264,7 +354,6 @@
     if ( intersects.length > 0 ) {
       var uuid = intersects[0].object.uuid;
       if (uuid in edges) {
-        console.log(intersects[0]);
         if (edges[uuid].selected) {
           intersects[0].object.material = edgeMaterial;
         } else {
@@ -273,26 +362,47 @@
         edges[uuid].selected = !edges[uuid].selected;
         intersects[0].object.material.needsUpdate = true;
       }
+		}
+  }
 
+  function onMouseMove(event) {
+    mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+    mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+    raycaster.setFromCamera( mouse, camera );
+
+    document.body.style.cursor = "default";
+
+    const intersects = raycaster.intersectObjects(group.children, true);
+    if ( intersects.length > 0 ) {
+      var uuid = intersects[0].object.uuid;
+      if (uuid in edges) {
+        document.body.style.cursor = "pointer";
+      }
 		}
   }
 
   function animate() {
     requestAnimationFrame( animate );
 
-    //group.rotation.y += 0.003;
-
     render();
   }
 
   function render() {
+    controls.update();
     renderer.render( scene, camera );
+  }
+
+  function setLink(id, callback){
+      $(id).click(function(e){
+          e.preventDefault();
+          callback(e);
+      });
   }
 
   </script>
     <!-- get user input OBJ file -->
     <input id="myInput" type="file" style="visibility:hidden" />
-
 
   </body>
 </html>

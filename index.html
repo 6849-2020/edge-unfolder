@@ -216,12 +216,14 @@
 
         var currentCategory = categoryFolders[category];
 
-        $("#category_" + currentCategory).append(`<li><a href="#" class="polyhedra">` + arg + `</a></li>`)
+        $("#category_" + currentCategory).append(`<li>
+          <a href="#" class="polyhedra" data-url="`+arg+`">` + POLYHEDRA[arg].name + `</a>
+          </li>`)
       }
     }
 
     setLink(".polyhedra", function(e){
-        var arg = $(e.target).html();
+        var arg = $(e.target).data("url");
         if (arg) {
           polyhedron = POLYHEDRA[arg];
           displayPolyhedron();

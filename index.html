@@ -113,7 +113,7 @@
 
     // camera
     camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 500 );
-    camera.position.set( -1, -2, 2 );
+    camera.position.set( 0, -1.6, -4 );
     scene.add( camera );
 
     // controls
@@ -154,7 +154,7 @@
     group = new THREE.Group();
     scene.add( group );
 
-    polyhedron = POLYHEDRA.J19;
+    polyhedron = POLYHEDRA.J2;
     displayPolyhedron();
 
     document.addEventListener( 'click', onClick, false );

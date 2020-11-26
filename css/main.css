@@ -46,12 +46,12 @@ p{
 
 #controlsBottom{
     width:100%;
-    min-width: 775px;
-    max-width: 850px;
+    min-width: 230px;
+    max-width: 315px;
     margin: auto;
     position: absolute;
     text-align: center;
-    bottom: 0;
+    bottom:30px;
     right: 0;
     left: 0;
     height:80px;
@@ -165,9 +165,9 @@ p{
 }
 
 #resetBottom{
-    /* position: absolute;
+    position: absolute;
     right:30px;
-    top: 13px; */
+    top: 13px;
     color: #34495e;
     font-weight: 900;
 }

@@ -69,6 +69,12 @@
     </div>
 
     <div id="controlsBottom">
+      <div id="controlsToggle" class="bigToggle">
+          <div>
+              <a href="#" id="liveToggle"><div><img class="preserveAspect" src="assets/liveSmall.png"/><span>Live</span></div></a><div class="separator"></div><a href="#" id="staticToggle"><div class="active"><img class="preserveAspect" src="assets/staticSmall.png"/><span>Static</span></div></a>
+          </div>
+          Control Mode
+      </div>
         <a href="#" id="resetBottom" class="btn btn-lg btn-default">Reset</a>
     </div>
 
@@ -196,6 +202,24 @@
 
     setLink("#resetBottom", function() {
       displayPolyhedron();
+    });
+
+    function controlMode(val){
+        if (val == "static") {
+            $("#staticToggle>div").addClass("active");
+            $("#liveToggle>div").removeClass("active");
+            // Change to STATIC mode
+        } else {
+            $("#staticToggle>div").removeClass("active");
+            $("#liveToggle>div").addClass("active");
+            // Change to LIVE mode
+        }
+    }
+    setLink("#staticToggle", function(){
+        controlMode("static");
+    });
+    setLink("#liveToggle", function(){
+        controlMode("live");
     });
 
     var categoryFolders = {};

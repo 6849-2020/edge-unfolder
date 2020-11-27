@@ -71,7 +71,7 @@
     <div id="controlsBottom">
       <div id="controlsToggle" class="bigToggle">
           <div>
-              <a href="#" id="liveToggle"><div><img class="preserveAspect" src="assets/liveSmall.png"/><span>Live</span></div></a><div class="separator"></div><a href="#" id="staticToggle"><div class="active"><img class="preserveAspect" src="assets/staticSmall.png"/><span>Static</span></div></a>
+              <a href="#" id="liveToggle"><div><img class="preserveAspect" src="assets/liveBox.png"/><span>Live</span></div></a><div class="separator"></div><a href="#" id="staticToggle"><div class="active"><img class="preserveAspect" src="assets/staticBox.png"/><span>Static</span></div></a>
           </div>
           Control Mode
       </div>
@@ -79,6 +79,8 @@
     </div>
 
     <a id="downloadAnchorElem" style="display:none"></a>
+    <!-- get user input OBJ file -->
+    <input id="myInput" type="file" style="display:none" />
 
   <script type="module">
 
@@ -91,8 +93,13 @@
 
   var polyhedron;
   var edges = {};
+  var faces = {};
+
+  var selection = [];
 
   let fileUpload = document.getElementById("myInput")
+
+  var liveUnfoldMode = false
 
   const mouse = new THREE.Vector2();
   var edgeMaterial = new THREE.MeshLambertMaterial( {
@@ -101,6 +108,41 @@
   var edgeMaterialSelected = new THREE.MeshLambertMaterial( {
     color: 0x40E0D0
   } );
+  var edgeMaterialFixed = new THREE.MeshLambertMaterial( {
+      color: 0xff9900 //0x838383
+  } );
+
+  var polygonOffset = 0.5
+  var material, material2, material3
+  material = new THREE.MeshPhongMaterial({
+      flatShading:true,
+      side:THREE.FrontSide,
+      polygonOffset: true,
+      polygonOffsetFactor: polygonOffset, // positive value pushes polygon further away
+      polygonOffsetUnits: 1,
+      wireframe: false,
+  });
+  material2 = new THREE.MeshPhongMaterial({
+      flatShading:true,
+      side:THREE.BackSide,
+      polygonOffset: true,
+      polygonOffsetFactor: polygonOffset, // positive value pushes polygon further away
+      polygonOffsetUnits: 1,
+      wireframe: false,
+  });
+  material3 = new THREE.MeshPhongMaterial({
+      //flatShading:true,
+      //side:THREE.BackSide,
+      //polygonOffset: true,
+      //polygonOffsetFactor: polygonOffset, // positive value pushes polygon further away
+      //polygonOffsetUnits: 1,
+      wireframe: true,
+  });
+  material.color.setStyle( "#ec008b");
+  material2.color.setStyle( "#dddddd");
+  material3.color.setStyle( "#000000");
+  //backside.visible = true;
+
 
   init();
   initControls();
@@ -155,7 +197,7 @@
 
     // Raycaster
     raycaster = new THREE.Raycaster();
-		raycaster.params.Line.threshold = 0.1;
+    raycaster.params.Line.threshold = 0.1;
 
     group = new THREE.Group();
     scene.add( group );
@@ -208,10 +250,16 @@
         if (val == "static") {
             $("#staticToggle>div").addClass("active");
             $("#liveToggle>div").removeClass("active");
+            liveUnfoldMode = false
+            displayPolyhedron();
+            console.log("Static active")
             // Change to STATIC mode
         } else {
             $("#staticToggle>div").removeClass("active");
             $("#liveToggle>div").addClass("active");
+            liveUnfoldMode = true
+            displayPolyhedron();
+            console.log("Livemode active")
             // Change to LIVE mode
         }
     }
@@ -256,12 +304,15 @@
   }
 
   function displayPolyhedron() {
+    selection = [];
     document.getElementById("polyhedronName").innerHTML = polyhedron.name;
 
     while (group.children.length > 0) {
       group.remove(group.children[0]);
     }
     edges = {};
+    faces = {};
+    var face_count = 0;
 
     var geometry = new THREE.Geometry();
     for (var i = 0; i < polyhedron.vertex.length; i++) {
@@ -269,12 +320,31 @@
     }
 
     var new_f_to_old_f = [];
+    var face_divided = []; // store divided faces e.g) 4 triangulated rectangle
     for (var i = 0; i < polyhedron.face.length; i++) {
       var f = polyhedron.face[i];
-      if (f.length == 3) {
+      if (f.length == 3) { // face is triangle
         geometry.faces.push(new THREE.Face3(f[0], f[1], f[2]));
         new_f_to_old_f.push(i);
-      } else {
+
+        faces[face_count] = {
+          folded: true,
+          grouped: false,
+          group: [],
+          index: face_count,
+          face_vertices: [f[0], f[1], f[2]],
+          face_edges: [null,null,null], // 0 is place holder for now
+          face_edges_linked: [true,true,true],
+          face_edges_flattened: [false,false,false],
+          face_edges_dummy: [false,false,false],
+          face_edges_angle:[0,0,0], // 0 is place holder for now
+          face_nextFace: [null,null,null],
+          name:'face_' + face_count
+        }
+        face_count +=1
+
+        // add face dictionary
+      } else { // face !triangle
         // do a simple triangulation
         // add a new vertex at the center
         var v = new THREE.Vector3(0, 0, 0);
@@ -285,10 +355,31 @@
         var v_idx = geometry.vertices.length;
         geometry.vertices.push(v);
 
+        var face_divided_temp = [] // temporary array to store grouped faces
+        for (var j = 0; j < f.length; j++) {
+            face_divided_temp.push(face_count+j)
+        }
         for (var j = 0; j < f.length; j++) {
           geometry.faces.push(new THREE.Face3(f[j], f[(j + 1) % f.length], v_idx));
           new_f_to_old_f.push(i);
+
+          faces[face_count] = {
+              folded: true,
+              grouped: true,
+              group: face_divided_temp,
+              index: face_count,
+              face_vertices: [f[j], f[(j + 1) % f.length], v_idx],
+              face_edges: [null,null,null], // 0 is place holder for now
+              face_edges_linked: [true,true,true],
+              face_edges_flattened: [false,true,true],
+              face_edges_dummy: [false,true,true],
+              face_edges_angle:[0,0,0], // 0 is place holder for now
+              face_nextFace: [null,face_divided_temp[(j+1)%(face_divided_temp.length)],face_divided_temp[((j-1)+face_divided_temp.length)%face_divided_temp.length]],
+              name:'face_' + face_count
+            }
+            face_count +=1
         }
+        face_divided.push(face_divided_temp)
       }
     }
 
@@ -308,14 +399,48 @@
     mesh.renderOrder = 1;
     group.add( mesh );
 
+    // this is reduendent step to remove original mesh and create new meshs, but each triangle is one object
+    v = group.children[0].geometry.vertices
+    for (var i = 0; i < group.children[0].geometry.faces.length; i++) {
+        var geometry = new THREE.Geometry();
+        f = group.children[0].geometry.faces[i]
+        // add vertices
+        geometry.vertices.push(v[f.a]);
+        geometry.vertices.push(v[f.b]);
+        geometry.vertices.push(v[f.c]);
+
+        // add faces ( we are only dealing with triangles
+        geometry.faces.push(new THREE.Face3(0, 1, 2));
+        geometry.faces.push(new THREE.Face3(0, 1, 2))
+
+        geometry.faces[0].materialIndex = 0
+        geometry.faces[1].materialIndex = 1
+
+        // create mesh and add it to group
+        geometry.computeFaceNormals();
+        var mesh = new THREE.Mesh( geometry, [material,material2] );
+        mesh.name = 'face_' + i
+        mesh.index = i
+
+        group.add( mesh );
+
+        // assigning two colors in mesh by duplicating face
+        //https://stackoverflow.com/questions/48177470/adding-a-different-colour-to-each-side-of-this-obj
+
+    }
+
     // edges
     for (var i = 0; i < polyhedron.edge.length; i++) {
       let e = polyhedron.edge[i];
+
+      geometry = group.children[0].geometry // This line added
       var edge = cylinderMesh(geometry.vertices[e[0]], geometry.vertices[e[1]], edgeMaterial);
+      edge.name = 'edge_' + i
 
       group.add(edge);
 
       var edge_faces = [];
+      var edge_faces_old = [];// this is needed for storing number of triangulated faces
       var normals = [];
       for (var j = 0; j < geometry.faces.length; j++) {
         let f = geometry.faces[j];
@@ -323,21 +448,41 @@
         // check if this face has this edge
         if ((f.a == e[0]) + (f.a == e[1]) + (f.b == e[0]) + (f.b == e[1]) + (f.c == e[0]) + (f.c == e[1]) == 2) {
           edge_faces.push(new_f_to_old_f[j]);
+          edge_faces_old.push(j);
           normals.push(f.normal);
+
+          if ( (f.a == e[0]) + (f.a == e[1]) +  (f.b == e[0]) + (f.b == e[1]) == 2) faces[j].face_edges[0] =i
+          else if( (f.b == e[0]) + (f.b == e[1]) +  (f.c == e[0]) + (f.c == e[1]) == 2 ) faces[j].face_edges[1] =i
+          else faces[j].face_edges[2] =i
         }
       }
+
       let dp = normals[0].dot(normals[1]);
       var angle = 180 - (Math.acos(dp) * 180 / Math.PI);
-      console.log(angle);
+      //console.log(angle);
 
       edges[edge.uuid] = {
         selected: false,
         hover: false,
         index: i,
         angle: angle,
-        edge_faces: edge_faces
+        edge_faces: edge_faces,
+        fixed: false, // added
+        edge_vertices: e, // added
+        edge_faces_old: edge_faces_old // added
       }
     }
+    // add adjacent face list in faces by iterating edges
+    for (var edge in edges) {
+      var linked = edges[edge].edge_faces_old
+      //var linked = edges[edge].edge_faces
+      for ( var i =0; i<2; i++){ // assume that edge have two adjacent faces
+        var index = faces[linked[i]].face_edges.indexOf(edges[edge].index)
+        faces[linked[i]].face_nextFace[index] = linked[(i+1)%2]
+        faces[linked[i]].face_edges_angle[index] = edges[edge].angle
+      }
+    }
+    group.remove(group.children[0]);
 
   }
 
@@ -377,16 +522,25 @@
     const intersects = raycaster.intersectObjects(group.children, true);
     if ( intersects.length > 0 ) {
       var uuid = intersects[0].object.uuid;
+
       if (uuid in edges) {
-        if (edges[uuid].selected) {
-          intersects[0].object.material = edgeMaterial;
-        } else {
-          intersects[0].object.material = edgeMaterialSelected;
+        if(!liveUnfoldMode) {
+            if (edges[uuid].selected) {
+                intersects[0].object.material = edgeMaterial;
+            } else {
+                intersects[0].object.material = edgeMaterialSelected;
+            }
+            edges[uuid].selected = !edges[uuid].selected;
+            intersects[0].object.material.needsUpdate = true;
         }
-        edges[uuid].selected = !edges[uuid].selected;
-        intersects[0].object.material.needsUpdate = true;
+        else{ // unfold Live Mode
+
+            selection.push(edges[uuid].index)
+            console.log(selection)
+            liveUnfold(faces,edges,intersects[0],edges[uuid]);
+        }
       }
-		}
+    }
   }
 
   function onMouseMove(event) {
@@ -424,9 +578,370 @@
       });
   }
 
+  function liveUnfold(faces,edges,edge_object,edge_clicked){
+
+      if (!edge_clicked.fixed && !edge_clicked.selected){ // check if it is fixed and not selected.
+
+          var face_to_update =[]
+          face_to_update.push(edge_clicked.edge_faces_old[0])
+          face_to_update.push(edge_clicked.edge_faces_old[1])
+
+          var justUnFold = false ;
+          var face_to_justUnFold ;
+
+          for (var i = 0; i < face_to_update.length; i++){
+              // checkLeftEdges(faces, face_to_update[i],)
+              var decision_count = checkLeftEdges(faces, face_to_update[i])[1]
+
+              if (decision_count == 1 ) {
+                  justUnFold = true
+                  face_to_justUnFold = face_to_update[i]
+              }
+          }
+
+          if(!justUnFold){
+              if (edge_clicked.selected) {
+                  edge_object.object.material = edgeMaterial;
+              } else {
+                  edge_object.object.material = edgeMaterialSelected;
+              }
+              edge_clicked.selected = !edge_clicked.selected;
+              edge_object.object.material.needsUpdate = true;
+          }
+
+          if(justUnFold){ // only can be fixed, not possible to unlink
+
+              var rotateQueue = [face_to_justUnFold]
+              var face_to_Rotate = [face_to_justUnFold]
+
+              while(rotateQueue.length>0){
+                  var face_visit = rotateQueue.pop()
+                  for ( var i = 0 ; i < 3 ; i++){
+
+                      if(faces[face_visit].face_edges_flattened[i] == true){
+                          if (!face_to_Rotate.includes(faces[face_visit].face_nextFace[i])){
+                              if (!rotateQueue.includes(faces[face_visit].face_nextFace[i])){
+                                  face_to_Rotate.push(faces[face_visit].face_nextFace[i])
+                                  rotateQueue.push(faces[face_visit].face_nextFace[i])
+                              }
+                          }
+                      }
+                  }
+              }
+
+              var f = faces[face_to_justUnFold]
+
+              var edge_to_fold_index = 0; //temporary place holder value 0
+              // need to find linked but not fixed
+              for (var j = 0 ; j < 3 ; j++) {
+                  if ((f.face_edges_linked[j] == true) && (f.face_edges_flattened[j] == false)) {
+                      edge_to_fold_index = j //  j is the index of edge to fold
+                  }
+              }
+
+              for (var edge in edges){
+                  if (edges[edge].index == f.face_edges[f.face_edges_linked.indexOf(true)]){
+                      edges[edge].fixed = true
+                  }
+              }
+              // change fixed edge color
+              var edge_toFix_index = f.face_edges[edge_to_fold_index]
+              var edge_object_toFix = scene.getObjectByName( "edge_" + edge_toFix_index);
+              edge_object_toFix.material = edgeMaterialFixed;
+
+
+              f.folded == false
+              f.face_edges_flattened[edge_to_fold_index] = true
+
+              var f_next = f.face_nextFace[edge_to_fold_index] // face to update( number)
+              faces[f_next].face_edges_flattened[faces[f_next].face_edges.indexOf(edge_toFix_index)] = true
+              //updateQueue.push(f_next) // this is not developed yet.
+
+              // Series Rotation
+              series_Face_Rotation( group, faces, face_to_Rotate, edge_to_fold_index )
+
+          }
+          else{ // user have more selection choices
+
+              var edge_index  = edge_clicked.index // index of currently selected edge
+              // Update face_edges_linked Boolean of two edges
+
+              for (var i  = 0 ; i<face_to_update.length ; i++){
+                  var bool_update_index = faces[face_to_update[i]].face_edges.indexOf(edge_index) // unfold booleans
+                  faces[face_to_update[i]].face_edges_linked[bool_update_index] = !faces[face_to_update[i]].face_edges_linked[bool_update_index] // update booleans
+
+              }
+              // Iterate faces and compute consequences from two updates
+              var updateQueue = face_to_update // usually 2 face to update
+
+              while (updateQueue.length > 0){
+                  var faceIndex = updateQueue.pop()
+                  // Here not we assume we have only triangle faces.
+                  // Unfold faces if there is no more user possible selections
+                  var f = faces[faceIndex];
+
+                  var result = checkLeftEdges(faces, faceIndex)
+                  var decision_count = result[1]
+                  var f_hinge = result[2]
+                  var f_hinge_edge = result[3]
+
+                  if (decision_count == 1){ // Rotation Case  //leftEdges - FixedEdges == 1 && f.folded == true
+
+                      // Check faces to rotate together
+                      var face_object;
+                      var rotateQueue;
+                      var face_to_Rotate;
+                      var edge_to_fold_index;
+
+                      if(f.grouped){ // rotating grouped face situation
+                          //rotateQueue = faces[f_hinge[0]].group
+                          rotateQueue = [f_hinge[0]]
+                          face_to_Rotate = [f_hinge[0]]
+
+                          f = faces[f_hinge[0]]
+
+                          for (var l = 0; l < group.children.length; l++){
+                              if(group.children[l].index == f.index) {
+                                  face_object = group.children[l]
+                                  break;
+                              }
+                          }
+
+                          while(rotateQueue.length>0){
+                              var face_visit = rotateQueue.pop()
+                              for ( var i = 0 ; i < 3 ; i++){
+
+                                  if(faces[face_visit].face_edges_flattened[i] == true){
+                                      if (!face_to_Rotate.includes(faces[face_visit].face_nextFace[i])){
+                                          if (!rotateQueue.includes(faces[face_visit].face_nextFace[i])){
+                                              console.log("add!!")
+                                              face_to_Rotate.push(faces[face_visit].face_nextFace[i])
+                                              rotateQueue.push(faces[face_visit].face_nextFace[i])
+                                          }
+                                      }
+                                  }
+                              }
+                          }
+
+                          edge_to_fold_index = 0
+
+                          for (var edge in edges){
+                              if (edges[edge].index == f.face_edges[0]){
+                                  edges[edge].fixed = true
+                              }
+                          }
+
+                          var edge_toFix_index = f.face_edges[0]
+                          var edge_object_toFix = scene.getObjectByName( "edge_" + edge_toFix_index);
+                          f.face_edges_flattened[0] = true
+
+                          var f_next = f.face_nextFace[0] // face to update( number)
+                          faces[f_next].face_edges_flattened[faces[f_next].face_edges.indexOf(edge_toFix_index)] = true
+
+                          edge_object_toFix.material = edgeMaterialFixed;
+                          f.folded == false
+
+                          series_Face_Rotation( group, faces, face_to_Rotate, edge_to_fold_index )
+
+                      }else{
+                          // normal situation
+                          rotateQueue = [faceIndex]
+                          face_to_Rotate = [faceIndex]
+
+                          for (var l = 0; l < group.children.length; l++){
+                              if(group.children[l].index == f.index) {
+                                  face_object = group.children[l]
+                                  break;
+                              }
+                          }
+
+                          while(rotateQueue.length>0){
+                              var face_visit = rotateQueue.pop()
+                              for ( var i = 0 ; i < 3 ; i++){
+
+                                  if(faces[face_visit].face_edges_flattened[i] == true){
+                                      if (!face_to_Rotate.includes(faces[face_visit].face_nextFace[i])){
+                                          if (!rotateQueue.includes(faces[face_visit].face_nextFace[i])){
+                                              face_to_Rotate.push(faces[face_visit].face_nextFace[i])
+                                              rotateQueue.push(faces[face_visit].face_nextFace[i])
+                                          }
+                                      }
+                                  }
+                              }
+                          }
+
+                          // find specific face
+
+                          // need to find linked but not fixed
+                          for (var j = 0 ; j < 3 ; j++) {
+                              if ((f.face_edges_linked[j] == true) && (f.face_edges_flattened[j] == false)) {
+                                  edge_to_fold_index = j //  j is the index of edge to fold
+                                  break;
+                              }
+                          }
+
+                          for (var edge in edges){
+                              if (edges[edge].index == f.face_edges[f.face_edges_linked.indexOf(true)]){
+                                  edges[edge].fixed = true
+                              }
+                          }
+
+
+                          var edge_toFix_index = f.face_edges[edge_to_fold_index]
+                          var edge_object_toFix = scene.getObjectByName( "edge_" + edge_toFix_index);
+
+                          f.face_edges_flattened[edge_to_fold_index] = true
+
+                          var f_next = f.face_nextFace[f.face_edges.indexOf(edge_toFix_index)] // face to update( number)
+                          faces[f_next].face_edges_flattened[faces[f_next].face_edges.indexOf(edge_toFix_index)] = true
+                          //updateQueue.push(f_next) // this is not developed yet.
+
+                          // change fixed edge color
+                          edge_object_toFix.material = edgeMaterialFixed;
+                          f.folded == false
+
+                          series_Face_Rotation( group, faces, face_to_Rotate, edge_to_fold_index )
+
+                      }
+
+                  }
+              }
+          }
+      }
+
+  }
+
+  function rotateFace( group,faces, face, edge_vector_0, edge_vector_1 , angle ){
+
+      // face : face object
+      // edge_vector_0 : Starting Vector of rotating axis in 3D space
+      // edge_vector_0 : Ending Vector of rotating axis in 3D space
+      // rotation angle
+      var array = face.geometry._bufferGeometry.attributes.position.array
+
+      var vector0 = new THREE.Vector3(array[0],array[1],array[2])
+      var vector1 = new THREE.Vector3(array[3],array[4],array[5])
+      var vector2 = new THREE.Vector3(array[6],array[7],array[8])
+
+      var axisVector = edge_vector_1.sub(edge_vector_0).normalize()
+      var theta = Math.PI - angle/ 180 * Math.PI;
+
+      face.geometry.matrixWorldNeedsUpdate = false
+
+      face.position.sub( edge_vector_0 )
+      face.position.applyAxisAngle(axisVector,theta);
+      face.rotateOnWorldAxis(axisVector, theta);
+      face.position.add( edge_vector_0 );
+
+      face.updateMatrixWorld();
+
+      vector0.applyMatrix4( face.matrixWorld );
+      vector1.applyMatrix4( face.matrixWorld );
+      vector2.applyMatrix4( face.matrixWorld );
+      face.geometry.vertices[0] = vector0
+      face.geometry.vertices[1] = vector1
+      face.geometry.vertices[2] = vector2
+
+
+      // REMOVE SELECTED FACE and RECREATE NEW FACE,
+      // FACE NAME and INDEX SHOULD BE SAME
+      var geometry = new THREE.Geometry();
+      geometry.vertices.push(vector0);
+      geometry.vertices.push(vector1);
+      geometry.vertices.push(vector2);
+      geometry.faces.push(new THREE.Face3(0, 1, 2))
+      geometry.faces.push(new THREE.Face3(0, 1, 2))
+
+      if(!faces[face.index].grouped) geometry.faces.push(new THREE.Face3(0, 1, 2))
+      else geometry.faces.push(new THREE.Face3(0, 1, 1))
+
+      geometry.faces.push(new THREE.Face3(0, 1, 1))
+      geometry.faces[0].materialIndex = 0
+      geometry.faces[1].materialIndex = 1
+      geometry.faces[2].materialIndex = 2
+      geometry.computeFaceNormals();
+
+
+      //var meshMaterial = new THREE.MeshLambertMaterial( { color: 0x0000ff, opacity: 1, transparent: true, } );
+      var mesh = new THREE.Mesh( geometry, [material,material2,material3]);
+      mesh.name = face.name
+      mesh.index = face.index
+
+      var toRemove;
+      for (var i = 0 ; i<group.children.length ; i++){
+          if (group.children[i].name == face.name){
+              toRemove = i
+              break;
+          }
+      }
+      group.remove(group.children[toRemove])
+
+      group.add( mesh );
+  }
+
+  function series_Face_Rotation(group, faces, face_to_Rotate, edge_to_fold_index){
+
+      // find specific face
+      var face_object // a face to rotate
+      for (var i = 0; i < group.children.length; i++){
+          if(group.children[i].index == faces[face_to_Rotate[0]].index) {
+              face_object = group.children[i]
+              break;
+          }
+      }
+
+      for (var k = 0; k < face_to_Rotate.length; k++ ){
+
+          var array = face_object.geometry._bufferGeometry.attributes.position.array
+          const edge_vector_0 = new THREE.Vector3(parseFloat(array[edge_to_fold_index*3+0]),parseFloat(array[edge_to_fold_index*3+1]),parseFloat(array[edge_to_fold_index*3+2]))
+          const edge_vector_1 = new THREE.Vector3(parseFloat(array[((edge_to_fold_index+1)%3)*3+0]),parseFloat(array[((edge_to_fold_index+1)%3)*3+1]),parseFloat(array[((edge_to_fold_index+1)%3)*3+2]))
+
+          var face_to_Rotate_Selected ;
+          for (var l = 0; l < group.children.length; l++){
+              if(group.children[l].index == face_to_Rotate[k]) {
+                  face_to_Rotate_Selected = group.children[l]
+                  break;
+              }
+          }
+          rotateFace( group, faces, face_to_Rotate_Selected, edge_vector_0, edge_vector_1, faces[face_to_Rotate[0]].face_edges_angle[edge_to_fold_index])
+      }
+  }
+
+  function checkLeftEdges(faces, face_to_update) {
+
+      var boundary_Edge = 0; // temporary 0 value
+      var f = faces[face_to_update]
+      var fList = []
+      var f_hinge = []
+      var f_hinge_edge = []
+
+      if (f.grouped) {
+          for (var j = 0; j < f.group.length; j++) {
+              fList.push(f.group[j]);
+          }
+      } else {
+          fList.push(face_to_update)
+      }
+
+      var decision_count = 0;
+      for (var l = 0; l < fList.length; l++) {
+          boundary_Edge += (3 - faces[l].face_edges_dummy.reduce((a, b) => a + b))
+          for (var m = 0; m < 3; m++) {
+              if ((!faces[fList[l]].face_edges_dummy[m]) && (faces[fList[l]].face_edges_linked[m]) && (!faces[fList[l]].face_edges_flattened[m])) {
+                  decision_count += 1
+                  f_hinge.push(fList[l])
+                  f_hinge_edge.push(m)
+
+              }
+          }
+      }
+      var result = [boundary_Edge, decision_count, f_hinge, f_hinge_edge]
+      return result
+  }
+
+
   </script>
-    <!-- get user input OBJ file -->
-    <input id="myInput" type="file" style="visibility:hidden" />
+
 
   </body>
 </html>

@@ -81,53 +81,15 @@ function exportToFold(polyhedron, edges) {
     }
   }
 
-  // last, create the face vector
-  // usually, we would just transform the vertices
-  // however, origami simulator seems to have a hard time with non triangular faces
-  // so... we triangulate the mesh, adding flat edges (0 degrees) for every face that has more than three faces
-  // this requires new vertices and new edges (for every face that has more than 3 vertices)
+  // last, create the face vector by transforming the vertices indices
   var faces_vertices = [];
   for (var i = 0; i < polyhedron.face.length; i++) {
-    if (polyhedron.face[i].length == 3) {
-      var f = [];
-      for (var j = 0; j < polyhedron.face[i].length; j++) {
-        let new_v = parent_to_coord[disjointSet.find(old_v_to_new_v[[polyhedron.face[i][j], i]])];
-        f.push(new_v);
-      }
-      faces_vertices.push(f);
-    } else {
-      // calculate the center of the face
-      let f = polyhedron.face[i];
-      var center_v = [0, 0, 0];
-      for (var j = 0; j < f.length; j++) {
-        let v = vertices_coords[parent_to_coord[disjointSet.find(old_v_to_new_v[[f[j], i]])]];
-        center_v[0] += v[0];
-        center_v[1] += v[1];
-        center_v[2] += v[2];
-      }
-      center_v[0] /= f.length;
-      center_v[1] /= f.length;
-      center_v[2] /= f.length;
-
-      let center_v_idx = vertices_coords.length;
-      // add the center vertex
-      vertices_coords.push(center_v);
-
-      for (var j = 0; j < f.length; j++) {
-        let v1 = parent_to_coord[disjointSet.find(old_v_to_new_v[[f[j], i]])];
-        let v2 = parent_to_coord[disjointSet.find(old_v_to_new_v[[f[(j + 1) % f.length], i]])];
-
-        // add a new edge
-        edges_vertices.push([v1, center_v_idx]);
-        edges_assignment.push("F");
-        edges_foldAngle.push(0);
-
-        // add the triangular face
-        let new_face = [v1, v2, center_v_idx];
-        faces_vertices.push(new_face);
-      }
+    var f = [];
+    for (var j = 0; j < polyhedron.face[i].length; j++) {
+      let new_v = parent_to_coord[disjointSet.find(old_v_to_new_v[[polyhedron.face[i][j], i]])];
+      f.push(new_v);
     }
-
+    faces_vertices.push(f);
   }
 
   var fold = {

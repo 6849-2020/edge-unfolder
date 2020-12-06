@@ -178,6 +178,13 @@ p{
     color: #34495e;
     font-weight: 900;
 }
+#SVGBottom{
+    position: absolute;
+    right:-340px;
+    top: 13px;
+    color: #34495e;
+    font-weight: 900;
+}
 
 
 #controls{

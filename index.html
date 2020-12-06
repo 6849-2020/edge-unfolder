@@ -18,6 +18,10 @@
   <script src="js/disjoint-set.js"></script>
   <script src="js/loadOBJ.js"></script>
   <script src="js/export.js"></script>
+
+  <script type="text/javascript" src="js/paper-full.min.js"></script>
+  <script type="text/javascript" src="js/SVGExport.js"></script>
+
   </head>
   <body>
 
@@ -78,11 +82,16 @@
       </div>
         <a href="#" id="resetBottom" class="btn btn-lg btn-default">Reset</a>
         <a href="#" id="testBottom" class="btn btn-lg btn-default">Cut Assignment</a>
+        <a href="#" id="SVGBottom" style="display:unset
+" class="btn btn-lg btn-default">SVG Export</a>
     </div>
 
     <a id="downloadAnchorElem" style="display:none"></a>
     <!-- get user input OBJ file -->
     <input id="myInput" type="file" style="display:none" />
+    <!-- hidden canvas for svg export -->
+    <canvas id="canvasSVG" width="500" height="500" style="display: none"></canvas>
+
 
   <script type="module">
 
@@ -249,7 +258,6 @@
     });
 
     setLink("#testBottom", function() {
-        console.log("test")
         var faceCount = 0
         var edgeList = [];
         for(var i in faces){
@@ -258,21 +266,14 @@
         for(var i in edges){
             edgeList.push(edges[i].index)
         }
-        console.log(edgeList)
 
         var faceQueue = [0]
         var faceGraph = []
         var faceTraverse = [0]
         var edgesToCut = []
 
-        console.log("face to visit is ", faceCount)
-        console.log(faces)
 
         while(faceCount > 1) {
-            console.log("now face Count is :" , faceCount)
-            console.log("faceQueue : ", faceQueue)
-            console.log("faceTraverse : ", faceTraverse)
-            console.log("faceGraph : ", faceGraph)
 
             //var f_index = faceTraverse.shift()
             var f_index = faceTraverse.pop()
@@ -285,8 +286,6 @@
                 var tempNextEdges = []
                 tempGroup.push(...f.group)
 
-                console.log(tempGroup)
-                console.log(tempGroup.length)
                 for (var i = 0; i < tempGroup.length; i++) {
                     for (var j = 0; j < 3; j++) {
                         if (!faces[tempGroup[i]].face_edges_dummy[j]) {
@@ -297,9 +296,7 @@
                 }
 
                 tempGroup = tempGroup.filter(n => !faceQueue.includes(n))
-                console.log(tempGroup)
                 for (var i = 0; i<tempGroup.length; i++) {
-                    console.log("count -1 ")
                     faceQueue.push(tempGroup[i])
                     faceCount -= 1
                 }
@@ -314,21 +311,17 @@
                                 if(!faceQueue.includes(faces[tempNextFaces[i]].group[j])){
                                     faceQueue.push(faces[tempNextFaces[i]].group[j])
                                     faceCount -= 1
-                                    console.log("count -1 ")
                                 }
                             }
                             faceTraverse.push(tempNextFaces[i])
                             faceGraph.push(tempNextEdges[i])
-                            console.log("edge update" ,faceGraph )
 
                         }else{
 
-                            console.log("count -1 ")
                             faceTraverse.push(tempNextFaces[i])
                             faceQueue.push(tempNextFaces[i])
                             faceGraph.push(tempNextEdges[i])
                             faceCount -= 1
-                            console.log("edge update" ,faceGraph )
                         }
                     }
 
@@ -336,8 +329,6 @@
 
             }
             else {
-                console.log("face_", f_index)
-                console.log("face_Next", f.face_nextFace)
 
                 for (var i = 0; i < 3; i++) {
 
@@ -349,16 +340,13 @@
                                 if(!faceQueue.includes(faces[f.face_nextFace[i]].group[j])){
                                     faceQueue.push(faces[f.face_nextFace[i]].group[j])
                                     faceCount -= 1
-                                    console.log("count -1 ")
                                 }
                             }
                             faceTraverse.push(f.face_nextFace[i])
                             faceGraph.push(f.face_edges[i])
-                            console.log("edge update" ,faceGraph )
 
                         }else{
 
-                            console.log("count -1 ")
                             faceTraverse.push(f.face_nextFace[i])
                             faceQueue.push(f.face_nextFace[i])
                             faceGraph.push(f.face_edges[i])
@@ -373,16 +361,85 @@
         }
 
 
-        console.log(faceQueue)
-        console.log(faceGraph)
-        //console.log(faceQueue)
-        //console.log(faceGraph)
+
         selection = edgeList.filter(n=> !faceGraph.includes(n))
-        console.log(selection)
         recomputeEdgeUnfolding(selection)
 
 
-      //recomputeEdgeUnfolding(selection);
+    });
+    setLink("#SVGBottom", function() {
+
+        var zVector = new THREE.Vector3(0,0,1);
+        var faceNormal = group.getObjectByName("face_0").geometry.faces[0].normal;
+        var cp = (zVector.cross(faceNormal)).normalize()
+        var dp = (new THREE.Vector3(0,0,1)).dot(faceNormal)
+        var theta = Math.PI - Math.acos(dp);
+
+        group.matrixWorldNeedsUpdate = false
+        group.position.applyAxisAngle(cp,theta);
+        group.rotateOnWorldAxis(cp,theta);
+        group.updateMatrixWorld()
+
+
+        var boundaryEdges = []
+        var creaseEdgesM = []
+        var creaseEdgesV = []
+
+        for (var face in faces){
+
+            var array = faces[face].position
+            var vector0 = new THREE.Vector3(array[0],array[1],array[2])
+            var vector1 = new THREE.Vector3(array[3],array[4],array[5])
+            var vector2 = new THREE.Vector3(array[6],array[7],array[8])
+
+            vector0.applyMatrix4( group.matrixWorld );
+            vector1.applyMatrix4( group.matrixWorld );
+            vector2.applyMatrix4( group.matrixWorld );
+
+            var vecter = [vector0,vector1,vector2]
+
+            //face_edges_dummy
+            //edges_selected
+            for( var i = 0 ; i < 3 ; i++){
+
+                if(!faces[face].face_edges_dummy[i]) {
+
+                    var edgeIndex = faces[face].face_edges[i]
+                    var selected
+                    var convex
+                    for (var edge in edges){
+                        if(edges[edge].index == edgeIndex) {
+                            selected = edges[edge].selected
+                            convex = edges[edge].convex
+                        }
+                    }
+
+                    if (!selected) {// crease edges
+
+                        if(convex) creaseEdgesM.push([vecter[i % 3].x, vecter[i % 3].y, vecter[(i + 1) % 3].x, vecter[(i + 1) % 3].y])
+                        else creaseEdgesV.push([vecter[i % 3].x, vecter[i % 3].y, vecter[(i + 1) % 3].x, vecter[(i + 1) % 3].y])
+
+                    } else {// boundary edges
+                        boundaryEdges.push([vecter[i % 3].x, vecter[i % 3].y, vecter[(i + 1) % 3].x, vecter[(i + 1) % 3].y])
+
+                    }
+                }
+            }
+        }
+
+
+        group.position.applyAxisAngle(cp,-theta);
+        group.rotateOnWorldAxis(cp,-theta);
+        group.updateMatrixWorld()
+
+        drawSVG(boundaryEdges,creaseEdgesM,creaseEdgesV)
+
+        var fileName = polyhedron.name + ".svg"
+        var url = "data:image/svg+xml;utf8," + encodeURIComponent(paper.project.exportSVG({asString:true}));
+        var link = document.createElement("a");
+        link.download = fileName;
+        link.href = url;
+        link.click();
 
     });
 
@@ -451,6 +508,11 @@
   }
 
   async function displayPolyhedron() {
+
+    var link = document.getElementById('SVGBottom');
+    link.style.display = 'unset';
+
+
     document.getElementById("polyhedronName").innerHTML = polyhedron.name;
 
     while (group.children.length > 0) {
@@ -633,13 +695,11 @@
               vertexVector.push((geometry.vertices[f.b].clone()).sub((geometry.vertices[f.c].clone().add(geometry.vertices[f.a].clone())).multiplyScalar(0.5)))
               planeVector.push( (geometry.vertices[f.c].clone().sub(geometry.vertices[f.a].clone())).cross((geometry.vertices[f.c].clone().sub(geometry.vertices[f.b].clone()))))
           }
-          //console.log(vertex)
         }
       }
-      //var MVTestVector = []
+
       var convex ;
       var mv =  vertexVector[1].dot(planeVector[0])
-      //console.log(mv)
       if(mv>0) convex = false;
       else convex = true;
 
@@ -655,11 +715,11 @@
         hover: false,
         index: i,
         angle: angle,
+        convex: convex,
         edge_faces: edge_faces,
         flattened: false, // added
         edge_vertices: e, // added
         edge_faces_old: edge_faces_old, // added
-
       }
     }
     // add adjacent face list in faces by iterating edges
@@ -704,7 +764,6 @@
   }
 
   function onClick( event ) {
-    //event.preventDefault();
 
     mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
     mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
@@ -728,11 +787,10 @@
         edges[uuid].selected = !edges[uuid].selected;
         intersects[0].object.material.needsUpdate = true;
 
-
         recomputeEdgeUnfolding(selection)
 
-
       }
+
     }
   }
 
@@ -755,7 +813,6 @@
 
   function animate() {
     requestAnimationFrame( animate );
-
     render();
   }
 
@@ -796,7 +853,9 @@
           var face_Hinge_Edge_Index = checkFaceGroup(faces, f_index)[4];
 
           if(remaining_Faces.length == 1) {
-              console.log(group)
+              var link = document.getElementById('SVGBottom');
+              link.style.display = 'unset';
+
               break;
           }
 
@@ -1022,7 +1081,6 @@
 
   function remaining_Faces_Count(){
       var num = 0;
-      console.log(faces)
       for(var i = 0; i<faces.length;i++){
           if(faces[i].folded) num +=1
       }

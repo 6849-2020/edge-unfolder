@@ -76,7 +76,7 @@
     <div id="controlsBottom">
       <div id="controlsToggle" class="bigToggle">
           <div>
-              <a href="#" id="liveToggle"><div><img class="preserveAspect" src="assets/liveBox.png"/><span>Live</span></div></a><div class="separator"></div><a href="#" id="staticToggle"><div class="active"><img class="preserveAspect" src="assets/staticBox.png"/><span>Static</span></div></a>
+              <a href="#" id="liveToggle"><div class="active"><img class="preserveAspect" src="assets/liveBox.png"/><span>Live</span></div></a><div class="separator"></div><a href="#" id="staticToggle"><div><img class="preserveAspect" src="assets/staticBox.png"/><span>Static</span></div></a>
           </div>
           View Mode
       </div>
@@ -112,7 +112,7 @@
 
   let fileUpload = document.getElementById("myInput")
 
-  var liveUnfoldMode = false
+  var liveUnfoldMode = true
 
   const mouse = new THREE.Vector2();
   var edgeMaterial = new THREE.MeshLambertMaterial( {

@@ -34,7 +34,41 @@
                     </button>
                     <p>
                     <b>EDGE UNFOLDER</b><br/>
-                        This app allows you to play around with edge cutting and unfolding of polyhedra and other 3D objects.
+Edge Unfolder allows users to unfold a polyhedron into a 2D net
+by cutting along its edges.
+
+<ol>
+<li> <b>Input:</b> You start by choosing a polyhedron from the list
+   (which includes all <a href="https://en.wikipedia.org/wiki/Johnson_solid">Johnson solids</a>),
+   or by uploading your own polyhedron in
+   <a href="https://en.wikipedia.org/wiki/Wavefront_.obj_file">OBJ format</a>.
+<li> <b>Cutting:</b> Next you can cut edges by clicking on them.
+  <ul>
+  <li> The cut edges will be highlighted in cyan.
+  <li> Edges that are required for connectivity (so should not be cut)
+     will be highlighted in yellow.
+  <li> Alternatively, the Cut Assignment button will automatically
+     cut edges until the polyhedron unfolds into one flat piece
+     (possibly with overlap).
+  </ul>
+<li> <b>Unfolding:</b> If you're in the default Live unfolding mode,
+   then the polyhedron will partially unfold as you cut enough edges to unfold.
+   (If you switch to Static mode, then the polyhedron will remain folded.)
+   When you complete an unfolding, you can export it to SVG,
+   <a href="https://github.com/edemaine/fold">FOLD</a>,
+   or <a href="https://origamisimulator.org/">Origami Simulator</a>.
+</ol>
+
+                    <b>CREDITS</b><br/>
+
+The Johnson solid polyhedron data comes from JSON files from
+<a href="https://stemkoski.github.io/Three.js/Polyhedra.html">Lee Stemkoski's Demo</a>,
+which in turn is based on George Hart's
+<a href="https://georgehart.com/virtual-polyhedra/vp.html">Virtual Polyhedra: The Encyclopedia of Polyhedra</a>.
+<br>
+This project was done by Joonhaeng Lee and Eyal Perry in the context of
+<a href="https://courses.csail.mit.edu/6.849/fall20/">MIT class 6.849: Geometric Folding Algorithms: Linkages, Origami, Polyhedra
+held in Fall 2020</a>.
                     </p>
                 </div>
             </div><!-- /.modal-content -->

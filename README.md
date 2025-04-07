@@ -27,6 +27,8 @@ The Johnson solid polyhedron data comes from JSON files from
 [Lee Stemkoski's Demo](https://stemkoski.github.io/Three.js/Polyhedra.html),
 which in turn is based on George Hart's
 [Virtual Polyhedra: The Encyclopedia of Polyhedra](https://georgehart.com/virtual-polyhedra/vp.html).
+The UI design is inspired by Amanda Ghassaei's
+[Origami Simulator](https://origamisimulator.org/).
 
 This project was done by Joonhaeng Lee and Eyal Perry in the context of
 [MIT class 6.849: Geometric Folding Algorithms: Linkages, Origami, Polyhedra

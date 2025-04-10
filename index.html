@@ -120,10 +120,13 @@ This software is open source. See <a href="https://github.com/6849-2020/edge-unf
           </div>
           View Mode
       </div>
+      
         <a href="#" id="resetBottom" class="btn btn-lg btn-default">Reset</a>
         <a href="#" id="testBottom" class="btn btn-lg btn-default">Cut Assignment</a>
         <a href="#" id="SVGBottom" style="display:unset
 " class="btn btn-lg btn-default">SVG Export</a>
+        <a href="#" id="disconnectBottom" class="btn btn-lg btn-default">Allow Disconnected Surfaces</a>
+        <div id="errorMessage" style="display:none">Cut Not Allowed</div>
     </div>
 
     <a id="downloadAnchorElem" style="display:none"></a>
@@ -144,7 +147,9 @@ This software is open source. See <a href="https://github.com/6849-2020/edge-unf
 
   var polyhedron;
   var edges = {};
-  var faces = {};
+  var faces = [];
+
+  var disconnectable = false;
 
   var selection = [];
   var remaining_Faces=[];
@@ -290,6 +295,12 @@ This software is open source. See <a href="https://github.com/6849-2020/edge-unf
         asyncCall();
         selection = []
       }
+    });
+
+    setLink("#disconnectBottom", function() {
+        console.log("disconnect");
+      disconnectable = !disconnectable;
+      $("#disconnectBottom").text(disconnectable ? "No Disconnected Surfaces" : "Allow Disconnected Surfaces");
     });
 
     setLink("#resetBottom", function() {
@@ -559,7 +570,7 @@ This software is open source. See <a href="https://github.com/6849-2020/edge-unf
       group.remove(group.children[0]);
     }
     edges = {};
-    faces = {};
+    faces = [];
     remaining_Faces = []
     var face_count = 0;
 
@@ -803,7 +814,21 @@ This software is open source. See <a href="https://github.com/6849-2020/edge-unf
 
   }
 
+  function dfs_connected (new_cut_edge, starting_face_idx, visited){
+    console.log(starting_face_idx);
+    visited[starting_face_idx] = true;
+    const starting_face = faces[starting_face_idx];
+    for (var i = 0; i< starting_face.face_edges.length; i++){
+        if (starting_face.face_edges_linked[i] && starting_face.face_edges[i] != new_cut_edge){
+            if(!visited[starting_face.face_nextFace[i]]){
+                dfs_connected(new_cut_edge, starting_face.face_nextFace[i], visited);
+            }
+        }
+    }
+  }
+
   function onClick( event ) {
+    $(errorMessage).hide();
 
     mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
     mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
@@ -813,9 +838,39 @@ This software is open source. See <a href="https://github.com/6849-2020/edge-unf
     const intersects = raycaster.intersectObjects(group.children, true);
     if ( intersects.length > 0 ) {
       var uuid = intersects[0].object.uuid;
+    //   console.log(edges);
+    //   console.log(faces);
 
       if (uuid in edges) {
 
+        if (!disconnectable && !edges[uuid].selected){
+
+            let is_disconnected = false
+            const new_cut_edge = edges[uuid].index;
+            const starting_face_idx = edges[uuid].edge_faces[0];
+            const visited = [];
+            console.log(faces);
+            console.log(faces.length);
+            for (var i = 0; i<faces.length; i++){
+                visited.push(false);
+            }
+            dfs_connected(new_cut_edge, starting_face_idx, visited);
+            console.log(visited);
+            for (var i = 0; i<faces.length; i++){
+                if (!visited[i]){
+                    is_disconnected = true;
+                }
+            }
+
+            if (is_disconnected){
+                $(errorMessage).show();
+                console.log("DISCONNECTED");
+                return;
+            }
+        }
+
+        
+        
 
         if(edges[uuid].selected){
             selection.splice(selection.indexOf(parseInt(intersects[0].object.name.split("_")[1])),1)
@@ -827,7 +882,7 @@ This software is open source. See <a href="https://github.com/6849-2020/edge-unf
         edges[uuid].selected = !edges[uuid].selected;
         intersects[0].object.material.needsUpdate = true;
 
-        recomputeEdgeUnfolding(selection)
+        recomputeEdgeUnfolding(selection);
 
       }
 
